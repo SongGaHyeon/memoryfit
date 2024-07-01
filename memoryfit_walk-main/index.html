@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible"="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    .wrap {
+        text-align: center;
+    }
+</style>
+<body>
+    <div class="wrap">
+        <h1>Teachable Machine Pose Model</h1>
+        <div><canvas id="canvas"></canvas></div>
+        <div id="label-container"></div>
+        <div id="timer-container"></div>
+    <div />
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+    <script type="text/javascript">
+        const URL = "./my_model/";
+        let model, webcam, ctx, labelContainer, maxPredictions;
+        let previousClass = null;
+        let count = 0;
+
+        window.onload = async function() {
+            startCountdown(60);
+            await init();
+        }
+
+        function startCountdown(seconds) {
+            const timerContainer = document.getElementById("timer-container");
+            timerContainer.innerText = "60초 동안 걸어주세요";
+            let counter = seconds;
+
+            const interval = setInterval(() => {
+                counter--;
+                timerContainer.innerText = counter + "초 남았습니다";
+
+                if (counter <= 0) {
+                    clearInterval(interval);
+                    timerContainer.innerText = "수고하셨습니다";
+                } else {
+                    if ((counter > 45 && counter % 3 === 0) || 
+                        (counter <= 45 && counter > 30 && counter % 1 === 0) || 
+                        (counter <= 30 && counter > 15 && counter % 3 === 0) || 
+                        (counter <= 15 && counter % 1 === 0)) {
+                        playBeep();
+                    }
+                }
+            }, 1000);
+        }
+
+        function playBeep() {
+            const beep = new Audio('https://www.soundjay.com/button/beep-07.wav');
+            beep.play();
+        }
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmPose.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const width = 640;
+            const height = 480;
+            const flip = true;
+            webcam = new tmPose.Webcam(width, height, flip);
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            const canvas = document.getElementById("canvas");
+            canvas.width = width; canvas.height = height;
+            ctx = canvas.getContext("2d");
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        async function loop(timestamp) {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+            const prediction = await model.predict(posenetOutput);
+
+            let highestPrediction = null;
+            let highestProbability = 0;
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction = prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+
+                if (prediction[i].probability > highestProbability) {
+                    highestProbability = prediction[i].probability;
+                    highestPrediction = prediction[i].className;
+                }
+            }
+
+            if ((highestPrediction === "class 1" || highestPrediction === "class 2") && highestPrediction !== previousClass) {
+                if ((previousClass === "class 1" && highestPrediction === "class 2") || (previousClass === "class 2" && highestPrediction === "class 1")) {
+                    count++;
+                }
+                previousClass = highestPrediction;
+            }
+
+            drawPose(pose);
+        }
+
+        function drawPose(pose) {
+            if (webcam.canvas) {
+                ctx.drawImage(webcam.canvas, 0, 0);
+                if (pose) {
+                    const minPartConfidence = 0.5;
+                    tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                    tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
