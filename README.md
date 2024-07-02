@@ -1,6 +1,6 @@
-# MemoryFit SEVICE
+# MemoryFit service
 
-memoryfit exercise sevice for Dementia with Flask&AI 
+Memoryfit exercise sevice for Dementia with Flask&AI 
 
 
 ## 1. Memoryfit Intro
