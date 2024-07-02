@@ -1,4 +1,4 @@
-# MEMORYFIT SEVICE
+# MemoryFit SEVICE
 
 memoryfit exercise sevice for Dementia with Flask&AI 
 
